@@ -1,17 +1,13 @@
-import { MongoClient } from "mongodb";
-
-export const client = new MongoClient("mongodb://naveen:naveenwifi13@localhost:27017/storageApp?replicaSet=myReplicaSet")
+import mongoose from "mongoose";
 
 export async function connectDB(){
-    await client.connect()
-    const db = client.db()
-    console.log("Database connected");
-    return db
+    try {
+        await mongoose.connect("mongodb://naveen:naveenwifi13@localhost:27017/storageApp?replicaSet=myReplicaSet")
+        console.log('Database connected');
+    } catch (error) {
+        console.log(error);
+        console.log("Could not connect to database");
+        process.exit(1)
+    }
 }
-
-process.on("SIGINT", async () => {
-    await client.close()
-    console.log("Client Disconnected!");
-    process.exit(0)
-})
 

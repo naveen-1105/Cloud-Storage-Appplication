@@ -14,7 +14,7 @@
     "cors": "^2.8.5",
     "express": "^4.22.1",
     "mime-types": "^2.1.35",
-    "mongodb": "^7.0.0"
+    "mongoose": "^9.1.5"
   },
   "description": ""
 }

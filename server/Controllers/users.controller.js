@@ -1,24 +1,24 @@
 import { ObjectId } from "mongodb";
-import { client } from "../Middleware/db.js";
+import Directory from "../Models/directory.model.js";
+import User from "../Models/users.model.js";
+import mongoose from "mongoose";
 
 export const registerUser = async (req, res, next) => {
-  const db = req.db;
   const { name, email, password } = req.body;
 
-  // const foundUser = db.collection('users').findOne({email})
-  // console.log(foundUser);
-  // if(foundUser) {
-  //   return res.status(409).json({
-  //     error: "User already exists",
-  //     message: "A user with this email address already exists. Please try logging in or use a different email."
-  //   })
-  // }
+  const foundUser =await User.findOne({email}).lean()
+  if(foundUser) {
+    return res.status(409).json({
+      error: "User already exists",
+      message: "A user with this email address already exists. Please try logging in or use a different email."
+    })
+  }
 
-  const userId = new ObjectId();
-  const rootDirId = new ObjectId();
-  const session = client.startSession();
+  const userId = new mongoose.Types.ObjectId()
+  const rootDirId = new mongoose.Types.ObjectId()
+  const session = await mongoose.startSession()
   try {
-    await db.collection("directories").insertOne(
+    await Directory.insertOne(
       {
         _id: rootDirId,
         name: `root-${email}`,
@@ -28,7 +28,7 @@ export const registerUser = async (req, res, next) => {
       { session }
     );
 
-    await db.collection("users").insertOne(
+    await User.insertOne(
       {
         _id: userId,
         name,
@@ -38,19 +38,18 @@ export const registerUser = async (req, res, next) => {
       },
       { session }
     );
-    session.commitTransaction();
+    await session.commitTransaction();
     res.status(201).json({ message: "User Registered" });
   } catch (err) {
     console.log(err.message);
-    session.abortTransaction();
+    await session.abortTransaction();
     next(err);
   }
 }
 
 export const userLogin = async (req, res, next) => {
-  const db = req.db;
   const { email, password } = req.body;
-  const user = await db.collection("users").findOne({ email, password });
+  const user = await User.findOne({ email, password });
   if (!user) {
     return res.status(404).json({ messagae: "user not found" });
   }

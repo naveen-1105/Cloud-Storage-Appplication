@@ -8,8 +8,7 @@ import CheckAuth from "./Middleware/auth.js";
 import { connectDB } from "./Middleware/db.js";
 
 try {
-  const db = await connectDB();
-  console.log(db.namespace)
+  connectDB();
 
   const app = express();
 
@@ -21,10 +20,6 @@ app.use(cors(
   }
 ));
 
-app.use((req,res,next) => {
-  req.db = db;
-  next()
-})
 
 app.use("/directory",CheckAuth, directoryRoutes);
 app.use("/file",CheckAuth, fileRoutes);
