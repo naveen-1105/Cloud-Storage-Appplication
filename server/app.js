@@ -7,13 +7,14 @@ import cookieParser from "cookie-parser"
 import CheckAuth from "./Middleware/auth.js";
 import { connectDB } from "./Middleware/db.js";
 
+const secretkey = "navwifi13";
 try {
   connectDB();
 
   const app = express();
 
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser(secretkey))
 app.use(cors(
   {origin: "http://localhost:5173",
     credentials: true
