@@ -2,6 +2,7 @@ import Directory from "../Models/directory.model.js";
 import User from "../Models/users.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt"
+import { Session } from "../Models/session.model.js";
 
 export const registerUser = async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -62,25 +63,31 @@ export const userLogin = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email: email});
 
+  if(!user){
+    return res.status(404).json({message: "No user exist with this Email"})
+  }
+
   const isPasswordValid = await bcrypt.compare(password,user.password)
   if(!isPasswordValid){
     return res.status(401).json({error: "Invalid Credentials"})
   }
 
   if (!user) {
-    return 
     res.status(404).json({ messagae: "user not found" });
   }
 
   try {
-    const cookiePayload = Buffer.from(
-      JSON.stringify({
-        uid: user._id.toString(),
-        expiry: Date.now() + 1000 * 60 * 60 * 24 * 7,
-      }),
-    ).toString("base64url");
-  
-    res.cookie("token", cookiePayload, {
+    const allSessions = await Session.find({userId : user._id})
+    console.log(allSessions);
+    if(allSessions.length >= 2){
+      await Session.deleteOne({_id: allSessions[0]._id})
+      console.log("Deleted one session",allSessions[0]);
+    }
+    const session = await Session.create({
+      userId: user._id,
+    })
+    console.log(session);
+    res.cookie("sid", session._id, {
       httpOnly: true,
       maxAge: 1000*60*60*24*7,
       signed: true
@@ -99,7 +106,18 @@ export const getUser = (req, res) => {
   });
 };
 
-export const userLogout = (req, res) => {
-  res.clearCookie("token");
+export const userLogout = async(req, res) => {
+  const {sid} = req.signedCookies
+  // const session = await Session.findOne({_id: sid});
+  await Session.deleteOne({_id: sid})
+  res.clearCookie('sid')
   res.status(204).end();
 };
+
+export const logoutAll = async(req, res) => {
+   const {sid} = req.signedCookies
+  const session = await Session.findOne({_id: sid});
+  await Session.deleteMany({userId: session.userId})
+
+  res.status(204).json({message: "Logged out from all the devices"})
+}
