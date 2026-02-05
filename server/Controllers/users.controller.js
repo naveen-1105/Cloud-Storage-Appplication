@@ -3,6 +3,8 @@ import User from "../Models/users.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt"
 import { Session } from "../Models/session.model.js";
+import Otp from "../Models/otp.model.js";
+import { otpSender } from "../util/resend.js";
 
 export const registerUser = async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -120,4 +122,36 @@ export const logoutAll = async(req, res) => {
   await Session.deleteMany({userId: session.userId})
 
   res.status(204).json({message: "Logged out from all the devices"})
+}
+
+export const sendOtp = async(req,res,next) => {
+  const {email} = req.body;
+  try {
+    const otp = Math.floor(Math.random() * 10000);
+    await Otp.findOneAndUpdate(
+      { userEmail: email },
+      { $set: { otp : otp } },
+      { upsert: true }
+    )
+    otpSender(otp)
+  } catch (error) {
+    console.log(error);
+    next()
+  }
+  return res.status(200).json({message: "OTP sent!"})
+}
+
+export const verifyOtp = async(req,res,next) => {
+  const {email,otp} = req.body;
+ try {
+   const user = await Otp.findOne({userEmail: email})
+   if(otp !== user.otp){
+     return res.status(401).json({message: "Entered otp doesn't match, please enter correct otp"})
+   }
+   await Otp.deleteOne({userEmail: email})
+ } catch (error) {
+  console.log(error);
+  next()
+ }
+  return res.status(201).json({message: "Otp matches, email Verified!!"})
 }
