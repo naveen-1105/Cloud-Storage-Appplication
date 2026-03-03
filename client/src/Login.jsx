@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { GoogleLogin,useGoogleLogin,useGoogleOneTapLogin } from "@react-oauth/google";
 import "./Auth.css";
+import { loginWithGoogle } from "../apis/loginWithGoogle";
 
 const Login = () => {
   const BASE_URL = "http://localhost:4000";
@@ -10,21 +12,18 @@ const Login = () => {
     password: "abcd",
   });
 
-  // serverError will hold the error message from the server
   const [serverError, setServerError] = useState("");
-
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Clear the server error as soon as the user starts typing in either field
     if (serverError) {
       setServerError("");
     }
 
-    setFormData((prevFormData) => ({
-      ...prevFormData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
     }));
   };
@@ -33,7 +32,7 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch(`${BASE_URL}/user/login`, {
+      const response = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         body: JSON.stringify(formData),
         headers: {
@@ -43,11 +42,10 @@ const Login = () => {
       });
 
       const data = await response.json();
+
       if (data.error) {
-        // If there's an error, set the serverError message
         setServerError(data.error);
       } else {
-        // On success, navigate to home or any other protected route
         navigate("/");
       }
     } catch (error) {
@@ -56,12 +54,12 @@ const Login = () => {
     }
   };
 
-  // If there's an error, we'll add "input-error" class to both fields
   const hasError = Boolean(serverError);
 
   return (
     <div className="container">
       <h2 className="heading">Login</h2>
+
       <form className="form" onSubmit={handleSubmit}>
         {/* Email */}
         <div className="form-group">
@@ -95,7 +93,6 @@ const Login = () => {
             placeholder="Enter your password"
             required
           />
-          {/* Absolutely-positioned error message below password field */}
           {serverError && <span className="error-msg">{serverError}</span>}
         </div>
 
@@ -104,7 +101,29 @@ const Login = () => {
         </button>
       </form>
 
-      {/* Link to the register page */}
+      {/* OR Divider */}
+        <div className="or-divider">
+          <span>OR</span>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+          onSuccess={async(credentialResponse) => {
+            console.log(credentialResponse);
+            const data = await loginWithGoogle(credentialResponse.credential)
+            console.log(data);
+            navigate('/')
+          }}
+          
+          text="continue_with"
+          theme="filled_blue"
+          onError={() => {
+            console.log("login failed")
+          }}
+          useOneTap
+            />
+          </div>
+        </div>
+
+        {/* Register Link */}
       <p className="link-text">
         Don't have an account? <Link to="/register">Register</Link>
       </p>

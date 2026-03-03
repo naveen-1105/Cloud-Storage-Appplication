@@ -3,17 +3,18 @@ import cors from "cors";
 import directoryRoutes from "./routes/directoryRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import authRoutes from "./routes/authRoutes.js"
 import cookieParser from "cookie-parser"
 import CheckAuth from "./Middleware/auth.js";
 import { connectDB } from "./Middleware/db.js";
-import sessionMiddleware from "./Middleware/session.js";
+import redisClient from "./util/redis.js";
 
 const secretkey = "navwifi13";
 try {
   connectDB();
 
   const app = express();
-
+  await redisClient.connect()
 
 
 app.use(express.json());
@@ -26,7 +27,8 @@ app.use(cors(
 
 app.use("/directory",CheckAuth, directoryRoutes);
 app.use("/file",CheckAuth, fileRoutes);
-app.use("/user", userRoutes);
+app.use("/auth", authRoutes);
+app.use("/user",CheckAuth, userRoutes);
 app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ message: "Something went wrong!" });
 });

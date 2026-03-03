@@ -11,7 +11,6 @@ function DirectoryView() {
   const { dirId } = useParams();
   const navigate = useNavigate();
 
-  // Displayed directory name
   const [directoryName, setDirectoryName] = useState("My Drive");
 
   // Lists of items

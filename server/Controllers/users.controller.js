@@ -1,157 +1,81 @@
-import Directory from "../Models/directory.model.js";
+import { ObjectId } from "mongodb";
 import User from "../Models/users.model.js";
-import mongoose from "mongoose";
-import bcrypt from "bcrypt"
+import { rm } from "fs/promises";
 import { Session } from "../Models/session.model.js";
-import Otp from "../Models/otp.model.js";
-import { otpSender } from "../util/resend.js";
-
-export const registerUser = async (req, res, next) => {
-  const { name, email, password } = req.body;
-
-  const foundUser = await User.findOne({ email }).lean();
-  if (foundUser) {
-    return res.status(409).json({
-      error: "User already exists",
-      message:
-        "A user with this email address already exists. Please try logging in or use a different email.",
-    });
-  }
-
-  const userId = new mongoose.Types.ObjectId();
-  const rootDirId = new mongoose.Types.ObjectId();
-
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  const hashedPassword = await bcrypt.hash(password,12)
-  try {
-    await Directory.create(
-      [
-        {
-          _id: rootDirId,
-          name: `root-${email}`,
-          parentDirId: null,
-          userId: userId.toString(),
-        },
-      ],
-      { session },
-    );
-
-    await User.create(
-      [
-        {
-          _id: userId,
-          name,
-          email,
-          password: hashedPassword,
-          rootDirId: rootDirId.toString(),
-        },
-      ],
-      { session },
-    );
-    await session.commitTransaction();
-    res.status(201).json({ message: "User Registered" });
-  } catch (err) {
-    console.log("error:", err);
-    await session.abortTransaction();
-    next(err);
-  } finally {
-    session.endSession();
-  }
-};
-
-export const userLogin = async (req, res, next) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email: email});
-
-  if(!user){
-    return res.status(404).json({message: "No user exist with this Email"})
-  }
-
-  const isPasswordValid = await bcrypt.compare(password,user.password)
-  if(!isPasswordValid){
-    return res.status(401).json({error: "Invalid Credentials"})
-  }
-
-  if (!user) {
-    res.status(404).json({ messagae: "user not found" });
-  }
-
-  try {
-    const allSessions = await Session.find({userId : user._id})
-    console.log(allSessions);
-    if(allSessions.length >= 2){
-      await Session.deleteOne({_id: allSessions[0]._id})
-      console.log("Deleted one session",allSessions[0]);
-    }
-    const session = await Session.create({
-      userId: user._id,
-    })
-    console.log(session);
-    res.cookie("sid", session._id, {
-      httpOnly: true,
-      maxAge: 1000*60*60*24*7,
-      signed: true
-    });
-    return res.json({ message: "logged in" });
-  } catch (error) {
-    console.log(error);
-    next()
-  }
-};
+import File from "../Models/file.model.js";
+import Directory from "../Models/directory.model.js";
+import mongoose from "mongoose";
 
 export const getUser = (req, res) => {
+  
   res.status(200).json({
     name: req.user.name,
     email: req.user.email,
+    picture: req.user.profilePic,
+    role: req.user.role
   });
 };
 
-export const userLogout = async(req, res) => {
-  const {sid} = req.signedCookies
-  // const session = await Session.findOne({_id: sid});
-  await Session.deleteOne({_id: sid})
-  res.clearCookie('sid')
-  res.status(204).end();
-};
-
-export const logoutAll = async(req, res) => {
-   const {sid} = req.signedCookies
-  const session = await Session.findOne({_id: sid});
-  await Session.deleteMany({userId: session.userId})
-
-  res.status(204).json({message: "Logged out from all the devices"})
-}
-
-export const sendOtp = async(req,res,next) => {
-  const {email} = req.body;
+export const getAllUser = async(req,res,next) => {
   try {
-    const otp = Math.floor(Math.random() * 10000);
-    await Otp.findOneAndUpdate(
-      { userEmail: email },
-      { $set: { otp : otp } },
-      { upsert: true }
-    )
-    otpSender(otp)
+    const allUsers = await User.find().select("_id name email").lean();
+    const allSession = await Session.find().lean()
+    const allSesssionUserId = allSession.map(({userId}) => userId.toString());
+
+    const sessionSet = new Set(allSesssionUserId);
+
+    const transformedAllUsers = allUsers.map((user) => ({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isLoggedIn: sessionSet.has(user._id.toString())
+    }))
+    res.status(200).json({users : transformedAllUsers})
   } catch (error) {
     console.log(error);
     next()
-  }
-  return res.status(200).json({message: "OTP sent!"})
+  };
 }
 
-export const verifyOtp = async(req,res,next) => {
-  const {email,otp} = req.body;
- try {
-   const user = await Otp.findOne({userEmail: email})
-   if(otp !== user.otp){
-     return res.status(401).json({message: "Entered otp doesn't match, please enter correct otp"})
-   }
-   await Otp.deleteOne({userEmail: email})
- } catch (error) {
-  console.log(error);
-  next()
- }
-  return res.status(201).json({message: "Otp matches, email Verified!!"})
+export const logoutUser = async(req,res,next) => {
+  const {id} = req.params
+  await Session.deleteMany({userId: id})
+  res.status(201).json({message: "user logged out from all devices"})
+}
+
+export const deleteUser = async(req,res,next) => {
+  const {id} = req.params
+  const rootDir = await Directory.findOne({userId: id, parentDirId: null})
+  async function getDirectoryContents(dirId){
+      var files = await File.find({parentDirId: dirId}).select("_id extension").lean();
+      var directories =await Directory.find({parentDirId: dirId}).select("_id").lean();
+      
+      for (const {_id,name} of directories) {
+        const {files : childFiles,directories : childDirectories} = await getDirectoryContents(_id.toString());
+  
+        files = [...files,...childFiles];
+        directories = [...directories,...childDirectories];
+      }
+      return {directories,files}
+    }
+
+      const {files , directories} = await getDirectoryContents(rootDir._id)
+      console.log(files);
+      console.log(directories);
+      for(const {_id,extension} of files){
+        await rm(`./storage/${_id.toString()}${extension}`)
+      }
+      const session =await mongoose.startSession();
+      try {
+        session.startTransaction()
+        await File.deleteMany({_id: {$in : files.map(({_id}) => _id) }})
+        await Directory.deleteMany({_id: {$in : [...directories.map(({_id}) => _id),new ObjectId(rootDir._id)] }})
+        await Session.deleteMany({userId: id})
+        await User.deleteOne({_id: id})
+        await session.commitTransaction()
+        return res.json({message: 'user deleted successfully'})
+      } catch (error) {
+        console.log(error);
+        await session.abortTransaction()
+      }1
 }

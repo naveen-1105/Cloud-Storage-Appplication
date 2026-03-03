@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./Auth.css";
+import { GoogleLogin } from "@react-oauth/google";
+import { loginWithGoogle } from "../apis/loginWithGoogle";
 
 const Register = () => {
   const BASE_URL = "http://localhost:4000";
@@ -55,7 +57,7 @@ const Register = () => {
 
     try {
       setIsSending(true);
-      const res = await fetch(`${BASE_URL}/user/send-otp`, {
+      const res = await fetch(`${BASE_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -87,7 +89,7 @@ const Register = () => {
 
     try {
       setIsVerifying(true);
-      const res = await fetch(`${BASE_URL}/user/verify-otp`, {
+      const res = await fetch(`${BASE_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
@@ -120,7 +122,7 @@ const Register = () => {
     }
 
     try {
-      const response = await fetch(`${BASE_URL}/user/register`, {
+      const response = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
         body: JSON.stringify(formData),
         headers: { "Content-Type": "application/json" },
@@ -252,6 +254,27 @@ const Register = () => {
           {isSuccess ? "Registration Successful" : "Register"}
         </button>
       </form>
+
+      <div className="or-divider">
+                <span>OR</span>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <GoogleLogin
+                onSuccess={async(credentialResponse) => {
+                  console.log(credentialResponse);
+                  const data = await loginWithGoogle(credentialResponse.credential)
+                  console.log(data);
+                  navigate('/')
+                }}
+                
+                text="continue_with"
+                theme="filled_blue"
+                onError={() => {
+                  console.log("login failed")
+                }}
+                useOneTap
+                  />
+                </div>
+              </div>
 
       <p className="link-text">
         Already have an account? <Link to="/login">Login</Link>

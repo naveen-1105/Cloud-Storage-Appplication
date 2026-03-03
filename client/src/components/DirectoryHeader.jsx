@@ -8,6 +8,8 @@ import {
   FaSignInAlt,
 } from "react-icons/fa";
 
+export const BASE_URL = "http://localhost:4000";
+
 function DirectoryHeader({
   directoryName,
   onCreateFolderClick,
@@ -17,11 +19,11 @@ function DirectoryHeader({
   disabled = false,
 }) {
   // Use a constant for the API base URL
-  const BASE_URL = "http://localhost:4000";
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("Guest User");
+  const [userPic, setUserPic] = useState("");
   const [userEmail, setUserEmail] = useState("guest@example.com");
 
   const userMenuRef = useRef(null);
@@ -38,9 +40,10 @@ function DirectoryHeader({
         });
         if (response.ok) {
           const data = await response.json();
-          // Set user info if logged in
-          setUserName(data.name);
-          setUserEmail(data.email);
+
+          setUserName((prev) => (prev !== data.name ? data.name : prev));
+          setUserEmail((prev) => (prev !== data.email ? data.email : prev));
+          setUserPic((prev) => (prev !== data.picture ? data.picture : prev));
           setLoggedIn(true);
         } else if (response.status === 401) {
           // User not logged in
@@ -56,7 +59,7 @@ function DirectoryHeader({
       }
     }
     fetchUser();
-  }, [BASE_URL]);
+  }, []);
 
   // -------------------------------------------
   // 2. Toggle user menu
@@ -70,7 +73,7 @@ function DirectoryHeader({
   // -------------------------------------------
   const handleLogout = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/user/logout`, {
+      const response = await fetch(`${BASE_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -93,7 +96,7 @@ function DirectoryHeader({
 
   const handleLogoutAll = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/user/logout-all`, {
+      const response = await fetch(`${BASE_URL}/auth/logout-all`, {
         method: "POST",
         credentials: "include",
       });
@@ -170,7 +173,7 @@ function DirectoryHeader({
             title="User Menu"
             onClick={handleUserIconClick}
           >
-            <FaUser />
+            {userPic ? <img className="profile-pic" src={userPic} alt={userName} /> : <FaUser />}
           </button>
 
           {showUserMenu && (

@@ -71,9 +71,6 @@ export const deleteDir = async (req, res, next) => {
   try {
     const user = req.user;
   const { id } = req.params;
-    // const filesCollection =await File
-  // console.log(filesCollection);
-  // const dirCollection =await db.collection('directories')
 
   async function getDirectoryContents(id){
     // console.log(new ObjectId(id));

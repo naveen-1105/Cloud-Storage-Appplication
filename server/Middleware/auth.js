@@ -1,16 +1,19 @@
 import { ObjectId } from "mongodb";
 import User from "../Models/users.model.js";
 import { Session } from "../Models/session.model.js";
+import redisClient from "../util/redis.js";
+
 
 async function CheckAuth(req, res, next) {
   const { sid } = req.signedCookies;
+  
   //   console.log("sid",sid);
   if (!sid) {
     return res.status(401).json({ error: "Not logged in" });
   }
 
   try {
-    const session = await Session.findOne({ _id: sid });
+    const session = await redisClient.json.get(`session:${sid}`)
 
     if (!session) {
       return res.status(401).json({ error: "Not logged in" });
@@ -20,7 +23,13 @@ async function CheckAuth(req, res, next) {
     if (!user) {
       return res.status(401).json({ error: "Not logged in" });
     }
-    req.user = user;
+    const cachedUser = await redisClient.json.get(`user:${user._id}`)
+    if(cachedUser){
+      req.user = cachedUser
+    }else{
+      await redisClient.json.set(`user:${user._id}`,"$",user)
+      req.user = user;
+    }
     next();
   } catch (error) {
     console.log(error);

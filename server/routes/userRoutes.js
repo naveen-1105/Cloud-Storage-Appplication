@@ -1,22 +1,14 @@
 import express from "express";
-import CheckAuth from "../Middleware/auth.js";
-import { getUser, logoutAll, registerUser, sendOtp, userLogin, userLogout, verifyOtp } from "../Controllers/users.controller.js";
+import { AuthorizeRole } from "../Middleware/AuthorizeRole.js";
+import { deleteUser, getAllUser, getUser, logoutUser } from "../Controllers/users.controller.js";
 
 
 const router = express.Router();
 
-router.post("/register", registerUser);
+router.get("/",getUser);
 
-router.post("/login", userLogin);
-
-router.get("/", CheckAuth, getUser);
-
-router.post("/logout", CheckAuth, userLogout);
-
-router.post("/logout-all",CheckAuth,logoutAll);
-
-router.post("/send-otp",sendOtp)
-
-router.post("/verify-otp",verifyOtp)
+router.get("/get-all-users",AuthorizeRole ,getAllUser)
+router.post("/logout/:id",AuthorizeRole ,logoutUser)
+router.post("/delete-user/:id",AuthorizeRole ,deleteUser)
 
 export default router;

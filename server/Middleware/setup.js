@@ -11,7 +11,7 @@ import mongoose from "mongoose";
       validator: {
         $jsonSchema: {
           bsonType: 'object',
-          required: ['_id', 'name', 'email', 'password', 'rootDirId'],
+          required: ['_id', 'name', 'email', 'rootDirId','role'],
           properties: {
             _id: { bsonType: 'objectId' },
             name: { bsonType: 'string', minLength: 3 },
@@ -20,7 +20,9 @@ import mongoose from "mongoose";
               pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$',
             },
             password: { bsonType: 'string', minLength: 4 },
-            rootDirId: { bsonType: 'objectId' },
+            profilePic: {bsonType: 'string'},
+            rootDirId: { bsonType: 'string' },
+            role: {bsonType:'string'}
           },
           additionalProperties: true,
         },
@@ -60,6 +62,7 @@ import mongoose from "mongoose";
             name: { bsonType: 'string' },
             userId: { bsonType: 'string' },
             parentDirId: { bsonType: ['string', 'null'] },
+            
           },
           additionalProperties: true,
         },
