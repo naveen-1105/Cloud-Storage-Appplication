@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
+import dotenv from 'dotenv'
+dotenv.config()
 
 export async function connectDB(){
     try {
-        await mongoose.connect("mongodb://naveen:naveenwifi13@localhost:27017/storageApp?replicaSet=myReplicaSet")
+        await mongoose.connect(process.env.mongo_url)
         console.log('Database connected');
     } catch (error) {
         console.log(error);

@@ -25,7 +25,7 @@ const sessionMiddleware = async (req, res, next) => {
       // 3️⃣ Send cookie to browser
       res.cookie("sessionId", sessionId, {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "Lax",
         secure: process.env.NODE_ENV === "production",
         maxAge: SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
       });

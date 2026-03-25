@@ -63,7 +63,7 @@ export const deleteUser = async(req,res,next) => {
       console.log(files);
       console.log(directories);
       for(const {_id,extension} of files){
-        await rm(`./storage/${_id.toString()}${extension}`)
+        await rm(`${import.meta.dirname}/../storage/${_id.toString()}${extension}`)
       }
       const session =await mongoose.startSession();
       try {

@@ -26,7 +26,7 @@ const UserSchema = new Schema({
         enum: ["admin","user","manager"],
         default: "user"
     }
-},{
+},{timestamps: true},{
     strict: "throw",
 })
 

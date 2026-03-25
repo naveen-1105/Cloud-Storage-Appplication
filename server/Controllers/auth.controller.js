@@ -7,9 +7,16 @@ import Otp from "../Models/otp.model.js";
 import { otpSender } from "../util/resend.js";
 import { verifyIdToken } from "../services/googleAuthService.js";
 import redisClient from "../util/redis.js";
+import { loginSchema, otpSenderSchema, otpVerifierSchema, registerSchema } from "../validators/authValidator.js";
+import { z } from "zod/v4";
 
 export const registerUser = async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const {success, data, error} = registerSchema.safeParse(req.body);
+
+  if(!success){
+    return res.status(400).json(error.issues[0].message)
+  }
+  const { name, email, password } = data;
 
   const foundUser = await User.findOne({ email }).lean();
   if (foundUser) {
@@ -65,13 +72,21 @@ export const registerUser = async (req, res, next) => {
 };
 
 export const userLogin = async (req, res, next) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email: email});
+  const {success, data, error} = loginSchema.safeParse(req.body);
+  if(!success){
+    return res.status(400).json(z.flattenError(error).fieldErrors)
+  }
+  const { email, password } = data;
+
+
+  try {
+    const user = await User.findOne({ email: email});
 
   if(!user){
     return res.status(404).json({message: "No user exist with this Email"})
   }
-
+  console.log(password);
+  console.log(user.password);
   const isPasswordValid = bcrypt.compare(password,user.password)
   if(!isPasswordValid){
     return res.status(401).json({error: "Invalid Credentials"})
@@ -80,9 +95,6 @@ export const userLogin = async (req, res, next) => {
   if (!user) {
     res.status(404).json({ messagae: "user not found" });
   }
-
-  try {
-    console.log("yha pr hu");
     const allSessions = await redisClient.ft.search(
       "userIdIdx",
       `@userId:{${user.id}}`,
@@ -103,7 +115,8 @@ export const userLogin = async (req, res, next) => {
     res.cookie("sid", sessionId, {
       httpOnly: true,
       maxAge: 1000*60*60*24*7,
-      signed: true
+      signed: true,
+      sameSite: "Lax",
     });
     return res.json({ message: "logged in" });
   } catch (error) {
@@ -129,14 +142,20 @@ export const logoutAll = async(req, res) => {
 }
 
 export const sendOtp = async(req,res,next) => {
-  const {email} = req.body;
+  const {success,data,error} = otpSenderSchema.safeParse(req.body)
+  if(!success){
+    return res.status(400).json(z.flattenError(error).fieldErrors)
+  }
+  const {email} = data;
+  console.log(email);
   try {
     const otp = Math.floor(Math.random() * 10000);
-    await Otp.findOneAndUpdate(
+    const status = await Otp.findOneAndUpdate(
       { userEmail: email },
-      { $set: { otp : otp } },
+      { $set: { otp : `${otp}` } },
       { upsert: true }
     )
+    console.log(status);
     otpSender(otp)
   } catch (error) {
     console.log(error);
@@ -146,9 +165,16 @@ export const sendOtp = async(req,res,next) => {
 }
 
 export const verifyOtp = async(req,res,next) => {
-  const {email,otp} = req.body;
+  const {success,data,error} = otpVerifierSchema.safeParse(req.body)
+  if(!success){
+    console.log(error);
+    return res.status(400).json(error)
+  }
+  const {email,otp} = data;
  try {
    const user = await Otp.findOne({userEmail: email})
+   console.log(typeof(otp));
+   console.log(typeof(user.otp));
    if(otp !== user.otp){
      return res.status(401).json({message: "Entered otp doesn't match, please enter correct otp"})
    }
@@ -191,6 +217,7 @@ export const googleLogin = async(req,res,next) => {
     res.cookie("sid", sessionId, {
       httpOnly: true,
       maxAge: 1000*60*60*24*7,
+      sameSite: "Lax",
       signed: true
     });
     return res.json({ message: "logged in" });
@@ -243,6 +270,7 @@ export const googleLogin = async(req,res,next) => {
     res.cookie("sid", sessionId, {
       httpOnly: true,
       maxAge: 1000*60*60*24*7,
+      sameSite: "Lax",
       signed: true
     });
     await mongooseSession.commitTransaction();

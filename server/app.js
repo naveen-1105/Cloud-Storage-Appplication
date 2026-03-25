@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser"
 import CheckAuth from "./Middleware/auth.js";
 import { connectDB } from "./Middleware/db.js";
 import redisClient from "./util/redis.js";
+import helmet from "helmet";
 
 const secretkey = "navwifi13";
 try {
@@ -16,7 +17,7 @@ try {
   const app = express();
   await redisClient.connect()
 
-
+app.use(helmet())
 app.use(express.json());
 app.use(cookieParser(secretkey))
 app.use(cors(

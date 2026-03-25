@@ -1,7 +1,9 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from "mongoose"
 import { rm } from "fs/promises";
 import Directory from "../Models/directory.model.js";
 import File from "../Models/file.model.js";
+import { dirName } from "../validators/nameValidator.js";
+import mongoose from "mongoose";
 
 export const getDirectory = async (req, res, next) => {
     try {
@@ -55,7 +57,12 @@ export const addDirectory = async (req, res, next) => {
 
 export const renameDir = async (req, res, next) => {
   const { id } = req.params;
-  const { newDirName } = req.body;
+  const {success, data, error} = dirName.safeParse(req.body);
+    
+    if(!success){
+      return res.status(400).json(error.issues[0].message)
+    }
+  const { newDirName } = data;
   try {
     const dirData = await Directory.find({_id: id}).lean();
   if (!dirData) res.status(404).json({ message: "Directory not found!" });
@@ -88,7 +95,7 @@ export const deleteDir = async (req, res, next) => {
   }
     const {files , directories} = await getDirectoryContents(id)
     for(const {_id,extension} of files){
-      await rm(`./storage/${_id.toString()}${extension}`)
+      await rm(`${import.meta.dirname}/../storage/${_id.toString()}${extension}`)
     }
     await File.deleteMany({_id: {$in : files.map(({_id}) => _id) }})
     await Directory.deleteMany({_id: {$in : [...directories.map(({_id}) => _id),new ObjectId(id)] }})

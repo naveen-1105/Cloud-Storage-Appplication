@@ -5,10 +5,15 @@ import path from "path";
 import { ObjectId } from "mongodb";
 import File from "../Models/file.model.js";
 import Directory from "../Models/directory.model.js";
+import { fileName } from "../validators/nameValidator.js";
 
 export const addFile = async (req, res, next) => {
   const parentDirId = req.params.parentDirId || req.user.rootDirId;
   const filename = req.headers.filename || "untitled";
+  const filesize = req.headers.filesize;
+  if(filesize > 50 * 1024 * 1024){
+    return res.status(413).json({message: "File size is too big"})
+  }
 
   const extension = path.extname(filename);
   console.log(filename);
@@ -18,14 +23,13 @@ export const addFile = async (req, res, next) => {
     const fileData = await File.insertOne({
       extension,
       name: filename,
+      size: filesize,
       parentDirId,
       userId: String(req.user._id),
     });
     const id = fileData._id;
-    console.log(fileData);
     const fullFileName = `${id}${extension}`;
-    console.log(`./storage/${fullFileName}`);
-    const writeStream = createWriteStream(`./storage/${fullFileName}`);
+    const writeStream = createWriteStream(`${import.meta.dirname}/../storage/${fullFileName}`);
 
     req.pipe(writeStream);
 
@@ -70,7 +74,7 @@ export const getFileById = async (req, res) => {
     }
     console.log(process.cwd());
     return res.sendFile(
-      `${process.cwd()}/storage/${id}${fileData.extension}`,
+      `${import.meta.dirname}/../storage/${id}${fileData.extension}`,
       (err) => {
         if (!res.headersSent && err) {
           return res.status(404).json({ error: "File not found!" });
@@ -95,7 +99,13 @@ export const renameFile = async (req, res, next) => {
         message: "File cannot be renamed because you are not the owner",
       });
     }
-    fileData.name = req.body.newFilename;
+    const {success, data, error} = fileName.safeParse(req.body);
+        
+        if(!success){
+          return res.status(400).json(error.issues[0].message)
+        }
+      const { newFilename } = data;
+    fileData.name = newFilename
     await fileData.save();
     return res.status(200).json({ message: "Renamed" });
   } catch (err) {
@@ -123,7 +133,7 @@ export const deleteFile = async (req, res, next) => {
         .status(401)
         .json({ message: "File cannot be seen because you are not the owner" });
     }
-    await rm(`./storage/${id}${fileData.extension}`);
+    await rm(`${import.meta.dirname}/../storage/${id}${fileData.extension}`);
     await File.deleteOne({ _id: new ObjectId(id) });
     return res.status(200).json({ message: "File Deleted Successfully" });
   } catch (err) {

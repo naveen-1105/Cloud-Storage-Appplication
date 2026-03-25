@@ -4,7 +4,8 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch app.js"
+    "dev": "node --watch app.js",
+    "setup": "node --watch ./config/setup.js"
   },
   "keywords": [],
   "author": "",
@@ -13,13 +14,17 @@
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
     "express": "^4.22.1",
     "google-auth-library": "^10.5.0",
+    "helmet": "^8.1.0",
     "mime-types": "^2.1.35",
+    "mongodb": "^7.1.1",
     "mongoose": "^9.1.5",
     "redis": "^5.11.0",
     "resend": "^6.9.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
   },
   "description": ""
 }

@@ -5,6 +5,10 @@ const FileSchema = new Schema({
         type: String,
         required: true,
     },
+    size: {
+        type: Number,
+        required: true,
+    },
     extension: {
         type: String,
         required: true,
@@ -16,7 +20,10 @@ const FileSchema = new Schema({
     parentDirId: {
         type:String,
         ref: 'Directory'
-    }
+    },
+},
+{
+    timestamps: true
 },{
     strict: "throw",
 })

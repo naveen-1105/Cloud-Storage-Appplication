@@ -1,6 +1,8 @@
 import { Resend } from 'resend';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const resend = new Resend('re_ZEEv1UE7_LvfwkrPzjKMSvNnFCpY7u1Lr');
+const resend = new Resend(process.env.resend_url);
 
 export async function otpSender(otp) {
   const { data, error } = await resend.emails.send({
