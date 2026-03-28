@@ -9,6 +9,7 @@ import { fileName } from "../validators/nameValidator.js";
 
 export const addFile = async (req, res, next) => {
   const parentDirId = req.params.parentDirId || req.user.rootDirId;
+  const parentDir = await Directory.findOne({_id: parentDirId})
   const filename = req.headers.filename || "untitled";
   const filesize = req.headers.filesize;
   if(filesize > 50 * 1024 * 1024){
@@ -29,11 +30,36 @@ export const addFile = async (req, res, next) => {
     });
     const id = fileData._id;
     const fullFileName = `${id}${extension}`;
-    const writeStream = createWriteStream(`${import.meta.dirname}/../storage/${fullFileName}`);
+    const filePath = `${import.meta.dirname}/../storage/${fullFileName}`
+    const writeStream = createWriteStream(filePath);
 
-    req.pipe(writeStream);
+    let totalFileLength = 0;
+    let abort = false;
+    req.on("data",async(chunk) => {
+      if(abort == true) return;
+        totalFileLength += chunk.length
+        if(totalFileLength > filesize){
+          abort = true;
+          writeStream.close()
+          await rm(filePath)
+          fileData.deleteOne()
+          return req.destroy()
+        }
+        writeStream.write(chunk)
+    })
 
     req.on("end", async () => {
+      parentDir.size += totalFileLength;
+      await parentDir.save();
+      let newParentDirId = parentDir.parentDirId
+      console.log("newParentDirId: ",parentDirId);
+      while(newParentDirId){
+        const newParentDir = await Directory.findOne({_id: newParentDirId})
+        console.log(newParentDir);
+        newParentDir.size += totalFileLength;
+        await newParentDir.save()
+        newParentDirId = newParentDir.parentDirId
+      }
       return res.status(201).json({ message: "File Uploaded" });
     });
     req.on("error", async () => {
@@ -132,6 +158,17 @@ export const deleteFile = async (req, res, next) => {
       return res
         .status(401)
         .json({ message: "File cannot be seen because you are not the owner" });
+    }
+    parentDir.size -= fileData.size;
+    await parentDir.save();
+    let newParentDirId = parentDir.parentDirId
+    console.log("newParentDirId: ",parentDirId);
+    while(newParentDirId){
+      const newParentDir = await Directory.findOne({_id: newParentDirId})
+      console.log(newParentDir);
+      newParentDir.size -= fileData.size;
+      await newParentDir.save()
+      newParentDirId = newParentDir.parentDirId
     }
     await rm(`${import.meta.dirname}/../storage/${id}${fileData.extension}`);
     await File.deleteOne({ _id: new ObjectId(id) });

@@ -13,7 +13,19 @@ const directorySchema = new Schema({
         type:String,
         default: null,
         ref: 'Directory'
+    },
+    size:{ 
+        type: Number,
+        default: 0,
+        required: true,
+    },
+    path: {
+        type: Array,
+        default: [],
+        required: true,
     }
+},{
+    timestamps: true
 },{
     strict: "throw",
 })

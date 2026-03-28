@@ -17,7 +17,7 @@ try {
   const app = express();
   await redisClient.connect()
 
-app.use(helmet())
+// app.use(helmet())
 app.use(express.json());
 app.use(cookieParser(secretkey))
 app.use(cors(

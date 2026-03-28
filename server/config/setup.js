@@ -11,7 +11,7 @@ try {
     validator: {
       $jsonSchema: {
         bsonType: "object",
-        required: ["_id", "name", "email", "rootDirId", "role"],
+        required: ["_id", "name", "email", "rootDirId", "role","maxSizeAllocated"],
         properties: {
           _id: { bsonType: "objectId" },
           name: { bsonType: "string", minLength: 3 },
@@ -23,6 +23,7 @@ try {
           profilePic: { bsonType: "string" },
           rootDirId: { bsonType: "string" },
           role: { bsonType: "string" },
+          maxSizeAllocated:{bsonType: "long"}
         },
         additionalProperties: true,
       },
@@ -57,12 +58,14 @@ try {
     validator: {
       $jsonSchema: {
         bsonType: "object",
-        required: ["_id", "name", "userId", "parentDirId"],
+        required: ["_id", "name", "userId", "parentDirId","size","path"],
         properties: {
           _id: { bsonType: "objectId" },
           name: { bsonType: "string" },
           userId: { bsonType: "string" },
           parentDirId: { bsonType: ["string", "null"] },
+          size: { bsonType: "int" },
+          path: {bsonType: "array"}
         },
         additionalProperties: true,
       },

@@ -25,3 +25,8 @@ export const renameDirectory = async (id, newDirName) => {
   });
   return data;
 };
+
+export const getBreadcrumb = async(id) => {
+  const {breadcrumb} = await axiosWithCreds.get(`/directory/breadcrumb/${id}`)
+  return breadcrumb
+}

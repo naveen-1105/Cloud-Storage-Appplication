@@ -1,4 +1,4 @@
-import { ObjectId } from "mongoose"
+import { ObjectId } from "mongodb" 
 import { rm } from "fs/promises";
 import Directory from "../Models/directory.model.js";
 import File from "../Models/file.model.js";
@@ -46,7 +46,14 @@ export const addDirectory = async (req, res, next) => {
       name: dirname,
       parentDirId,
       userId: String(user._id),
+      path:[],
     });
+    
+    dir.path.push(parentDirId)
+    parentDir.path.forEach(parentDirId => {
+      dir.path.push(parentDirId)
+    });
+    await dir.save()
 
     return res.status(200).json({ message: "Directory Created!" });
   } catch (err) {
@@ -76,16 +83,16 @@ export const renameDir = async (req, res, next) => {
 export const deleteDir = async (req, res, next) => {
   
   try {
-    const user = req.user;
-  const { id } = req.params;
+    const { id } = req.params;
+    const directory = await Directory.findOne({_id: id})
 
   async function getDirectoryContents(id){
     // console.log(new ObjectId(id));
-    var files = await File.find({parentDirId: id}).select("_id").lean();
+    var files = await File.find({parentDirId: id}).lean();
     // console.log(files);
-    var directories =await Directory.find({parentDirId: id}).select("_id").lean();
+    var directories =await Directory.find({parentDirId: id}).lean();
     
-    for (const {_id,name} of directories) {
+    for (const {_id} of directories) {
       const {files : childFiles,directories : childDirectories} = await getDirectoryContents(_id.toString());
 
       files = [...files,...childFiles];
@@ -94,8 +101,16 @@ export const deleteDir = async (req, res, next) => {
     return {directories,files}
   }
     const {files , directories} = await getDirectoryContents(id)
+    console.log(files);
     for(const {_id,extension} of files){
       await rm(`${import.meta.dirname}/../storage/${_id.toString()}${extension}`)
+    }
+    let newParentDirId = directory.parentDirId;
+    while(newParentDirId){
+      const newParentDir = await Directory.findOne({_id: newParentDirId})
+      newParentDir.size -= directory.size;
+      await newParentDir.save()
+      newParentDirId = newParentDir.parentDirId
     }
     await File.deleteMany({_id: {$in : files.map(({_id}) => _id) }})
     await Directory.deleteMany({_id: {$in : [...directories.map(({_id}) => _id),new ObjectId(id)] }})
@@ -103,5 +118,19 @@ export const deleteDir = async (req, res, next) => {
   } catch (err) {
     console.log(err);
     next(err);
+  }
+}
+
+export const getBreadcrumbs = async(req,res,next) => {
+  const {id} = req.params;
+  console.log(id);
+  let breadcrumbs = []
+  try {
+    const directory = await Directory.findOne({_id :id})
+  
+    breadcrumbs = await Directory.find({_id: {$in: directory.path}}).select("_id name")
+    return res.status(200).json(breadcrumbs)
+  } catch (error) {
+    console.log(error);
   }
 }

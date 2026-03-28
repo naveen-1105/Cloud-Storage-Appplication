@@ -6,13 +6,16 @@ import File from "../Models/file.model.js";
 import Directory from "../Models/directory.model.js";
 import mongoose from "mongoose";
 
-export const getUser = (req, res) => {
-  
+export const getUser = async(req, res) => {
+  const rootDir = await Directory.findOne({userId: req.user._id})
   res.status(200).json({
     name: req.user.name,
     email: req.user.email,
     picture: req.user.profilePic,
-    role: req.user.role
+    maxSizeAllocated: req.user.maxSizeAllocated,
+    size: rootDir.size,
+    role: req.user.role,
+    rootDirId: req.user.rootDirId
   });
 };
 

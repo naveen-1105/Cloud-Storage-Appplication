@@ -16,6 +16,8 @@ import {
 import { deleteFile, renameFile } from "./api/fileApi";
 import DetailsPopup from "./components/DetailsPopup";
 import ConfirmDeleteModal from "./components/ConfirmDeleteModel";
+import { fetchUser } from "./api/userApi";
+import Breadcrumb from "./components/Breadcrumb";
 
 function DirectoryView() {
   const { dirId } = useParams();
@@ -38,9 +40,19 @@ function DirectoryView() {
   const [progressMap, setProgressMap] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const [activeContextMenu, setActiveContextMenu] = useState(null);
+  const [activeDirId,setActiveDirId] = useState(null)
   const [detailsItem, setDetailsItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
 
+  useEffect(() => {
+    loadUser();
+  },[]);
+
+  async function loadUser() {
+    const user = await fetchUser();
+    console.log(user.rootDirId);
+    setActiveDirId(user.rootDirId);
+  }
   const openDetailsPopup = (item) => {
     console.log(item);
     setDetailsItem(item);
@@ -275,6 +287,7 @@ function DirectoryView() {
             "Directory not found or you do not have access to it!"
           }
         />
+        <Breadcrumb id ={activeDirId}/>
 
         {showCreateDirModal && (
           <CreateDirectoryModal

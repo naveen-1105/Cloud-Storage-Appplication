@@ -25,6 +25,11 @@ const UserSchema = new Schema({
         type: String,
         enum: ["admin","user","manager"],
         default: "user"
+    },
+    maxSizeAllocated:{
+        type: "Number",
+        required: true,
+        default: 1 * (1024 ** 3)
     }
 },{timestamps: true},{
     strict: "throw",

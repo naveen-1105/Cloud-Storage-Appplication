@@ -11,27 +11,27 @@ export const fetchAllUsers = async () => {
 };
 
 export const logoutUser = async () => {
-  const { data } = await axiosWithCreds.post("/user/logout");
+  const { data } = await axiosWithCreds.post("/auth/logout");
   return data;
 };
 
 export const logoutAllSessions = async () => {
-  const { data } = await axiosWithCreds.post("/user/logout-all");
+  const { data } = await axiosWithCreds.post("/auth/logout-all");
   return data;
 };
 
 export const logoutUserById = async (id) => {
-  const { data } = await axiosWithCreds.post(`/users/${id}/logout`);
+  const { data } = await axiosWithCreds.post(`/auth/${id}/logout`);
   return data;
 };
 
 export const loginUser = async (formData) => {
-  const { data } = await axiosWithCreds.post("/user/login", formData);
+  const { data } = await axiosWithCreds.post("/auth/login", formData);
   return data;
 };
 
 export const registerUser = async (formData) => {
-  const { data } = await axiosWithoutCreds.post("/user/register", formData);
+  const { data } = await axiosWithoutCreds.post("/auth/register", formData);
   return data;
 };
 
