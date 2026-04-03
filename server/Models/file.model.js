@@ -1,4 +1,5 @@
 import { model, Schema } from "mongoose";
+import { boolean } from "zod/v4";
 
 const FileSchema = new Schema({
     name: {
@@ -21,6 +22,9 @@ const FileSchema = new Schema({
         type:String,
         ref: 'Directory'
     },
+    isUploading: {
+        type: boolean,
+    }
 },
 {
     timestamps: true

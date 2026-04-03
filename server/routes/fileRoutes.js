@@ -1,7 +1,7 @@
 import express from "express";
 
 import { validateId } from "../Middleware/idValidator.js";
-import { addFile, deleteFile, getFileById, renameFile } from "../Controllers/files.controller.js";
+import { addFile, deleteFile, getFileById, renameFile, s3UploadInitiate } from "../Controllers/files.controller.js";
 
 const router = express.Router();
 
@@ -12,6 +12,7 @@ router.post("/:parentDirId?", addFile);
 
 // Read
 router.get("/:id", getFileById);
+router.post("/s3uploadInitiate/:parentDirId?", s3UploadInitiate);
 
 // Update
 router.patch("/:id", renameFile);

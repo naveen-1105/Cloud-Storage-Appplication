@@ -4,6 +4,8 @@ import { addDirectory, deleteDir, getBreadcrumbs, getDirectory, renameDir } from
 const router = express.Router();
 
 // Read
+router.get("/breadcrumb/:id", getBreadcrumbs);
+
 router.get("/:id?", getDirectory);
 
 router.post("/:parentDirId?",addDirectory);
@@ -11,6 +13,6 @@ router.post("/:parentDirId?",addDirectory);
 router.patch("/:id", renameDir);
 
 router.delete("/:id", deleteDir);
-router.get("/breadcrumb/:id", getBreadcrumbs);
+
 
 export default router;

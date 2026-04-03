@@ -4,12 +4,12 @@ import Directory from "../Models/directory.model.js";
 import File from "../Models/file.model.js";
 import { dirName } from "../validators/nameValidator.js";
 import mongoose from "mongoose";
+import path from "path";
 
 export const getDirectory = async (req, res, next) => {
     try {
         const user = req.user;
         const id = req.params.id || user.rootDirId;
-
         const directoryData = await Directory
             .findOne({ _id: id }).lean();
         if (!directoryData)
@@ -121,16 +121,24 @@ export const deleteDir = async (req, res, next) => {
   }
 }
 
-export const getBreadcrumbs = async(req,res,next) => {
-  const {id} = req.params;
-  console.log(id);
-  let breadcrumbs = []
+export const getBreadcrumbs = async (req, res, next) => {
   try {
-    const directory = await Directory.findOne({_id :id})
-  
-    breadcrumbs = await Directory.find({_id: {$in: directory.path}}).select("_id name")
-    return res.status(200).json(breadcrumbs)
+    const pathArray = req.query.path
+    const dirId = req.params.dirId
+    console.log(pathArray);
+    console.log(dirId);
+    if(dirId !== undefined){
+      pathArray.push(dirId)
+    }
+    let breadcrumbs = []
+    if (!Array.isArray(pathArray) || pathArray.length === 0) {
+      return res.status(200).json(breadcrumbs);
+    }
+
+    breadcrumbs = await Directory.find({ _id: { $in: pathArray } }).select("_id name");
+    res.status(200).json({ breadcrumbs });
   } catch (error) {
     console.log(error);
+    next(error);
   }
-}
+};
