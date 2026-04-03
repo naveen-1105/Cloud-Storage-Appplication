@@ -16,7 +16,6 @@ import {
 import { deleteFile, renameFile } from "./api/fileApi";
 import DetailsPopup from "./components/DetailsPopup";
 import ConfirmDeleteModal from "./components/ConfirmDeleteModel";
-import { fetchUser } from "./api/userApi";
 import Breadcrumb from "./components/Breadcrumb";
 
 function DirectoryView() {
@@ -29,34 +28,23 @@ function DirectoryView() {
   const [errorMessage, setErrorMessage] = useState("");
   const [showCreateDirModal, setShowCreateDirModal] = useState(false);
   const [newDirname, setNewDirname] = useState("New Folder");
+  const [path, setPath] = useState([])
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameType, setRenameType] = useState(null);
   const [renameId, setRenameId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef(null);
-  const [uploadQueue, setUploadQueue] = useState([]);
-  const [uploadXhrMap, setUploadXhrMap] = useState({});
-  const [progressMap, setProgressMap] = useState({});
-  const [isUploading, setIsUploading] = useState(false);
+
+  // Single-file upload state
+  const [uploadItem, setUploadItem] = useState(null); // { id, file, name, size, progress, isUploading }
+  const xhrRef = useRef(null);
+
   const [activeContextMenu, setActiveContextMenu] = useState(null);
-  const [activeDirId,setActiveDirId] = useState(null)
   const [detailsItem, setDetailsItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
 
-  useEffect(() => {
-    loadUser();
-  },[]);
-
-  async function loadUser() {
-    const user = await fetchUser();
-    console.log(user.rootDirId);
-    setActiveDirId(user.rootDirId);
-  }
-  const openDetailsPopup = (item) => {
-    console.log(item);
-    setDetailsItem(item);
-  };
+  const openDetailsPopup = (item) => setDetailsItem(item);
   const closeDetailsPopup = () => setDetailsItem(null);
 
   const loadDirectory = async () => {
@@ -64,6 +52,7 @@ function DirectoryView() {
       const data = await getDirectoryItems(dirId);
       setDirectoryName(dirId ? data.name : "My Drive");
       setDirectoriesList([...data.directories].reverse());
+      setPath(data.path)
       setFilesList([...data.files].reverse());
     } catch (err) {
       if (err.response?.status === 401) navigate("/login");
@@ -115,88 +104,79 @@ function DirectoryView() {
   }
 
   function handleFileSelect(e) {
-    const selectedFiles = Array.from(e.target.files);
-    if (!selectedFiles.length) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const newItems = selectedFiles.map((file) => ({
-      file,
-      name: file.name,
-      size: file.size,
-      id: `temp-${Date.now()}-${Math.random()}`,
-      isUploading: false,
-    }));
-
-    setFilesList((prev) => [...newItems, ...prev]);
-    newItems.forEach((item) => {
-      setProgressMap((prev) => ({ ...prev, [item.id]: 0 }));
-    });
-    setUploadQueue((prev) => [...prev, ...newItems]);
-    e.target.value = "";
-
-    if (!isUploading) {
-      setIsUploading(true);
-      processUploadQueue([...uploadQueue, ...newItems.reverse()]);
-    }
-  }
-
-  function processUploadQueue(queue) {
-    if (!queue.length) {
-      setIsUploading(false);
-      setUploadQueue([]);
-      setTimeout(() => loadDirectory(), 1000);
+    if (uploadItem?.isUploading) {
+      setErrorMessage("An upload is already in progress. Please wait.");
+      setTimeout(() => setErrorMessage(""), 3000);
+      e.target.value = "";
       return;
     }
 
-    const [currentItem, ...restQueue] = queue;
-    setFilesList((prev) =>
-      prev.map((f) =>
-        f.id === currentItem.id ? { ...f, isUploading: true } : f
-      )
-    );
+    const tempItem = {
+      file,
+      name: file.name,
+      size: file.size,
+      id: `temp-${Date.now()}`,
+      isUploading: true,
+      progress: 0,
+    };
 
+    // Optimistically show the file in the list
+    setFilesList((prev) => [tempItem, ...prev]);
+    setUploadItem(tempItem);
+    e.target.value = "";
+
+    startUpload(tempItem);
+  }
+
+  function startUpload(item) {
     const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+
     xhr.open("POST", `http://localhost:4000/file/${dirId || ""}`);
     xhr.withCredentials = true;
-    xhr.setRequestHeader("filename", currentItem.name);
-    xhr.setRequestHeader("filesize", currentItem.size);
+    xhr.setRequestHeader("filename", item.name);
+    xhr.setRequestHeader("filesize", item.size);
 
     xhr.upload.addEventListener("progress", (evt) => {
       if (evt.lengthComputable) {
         const progress = (evt.loaded / evt.total) * 100;
-        setProgressMap((prev) => ({ ...prev, [currentItem.id]: progress }));
+        setUploadItem((prev) => (prev ? { ...prev, progress } : prev));
       }
     });
 
-    xhr.onload = () => processUploadQueue(restQueue);
-    xhr.onerror = () => processUploadQueue(restQueue);
+    xhr.onload = () => {
+      // Clear upload state and refresh directory
+      setUploadItem(null);
+      loadDirectory();
+    };
 
-    setUploadXhrMap((prev) => ({ ...prev, [currentItem.id]: xhr }));
-    xhr.send(currentItem.file);
+    xhr.onerror = () => {
+      setErrorMessage("This file is larger than the available space!");
+      // Remove temp item from the list
+      setFilesList((prev) => prev.filter((f) => f.id !== item.id));
+      setUploadItem(null);
+      setTimeout(() => setErrorMessage(""), 3000);
+    };
+
+    xhr.send(item.file);
   }
 
   function handleCancelUpload(tempId) {
-    const xhr = uploadXhrMap[tempId];
-    if (xhr) xhr.abort();
-    setUploadQueue((prev) => prev.filter((item) => item.id !== tempId));
+    if (uploadItem && uploadItem.id === tempId && xhrRef.current) {
+      xhrRef.current.abort();
+    }
+    // Remove temp item and reset state
     setFilesList((prev) => prev.filter((f) => f.id !== tempId));
-    setProgressMap((prev) => {
-      const { [tempId]: _, ...rest } = prev;
-      return rest;
-    });
-    setUploadXhrMap((prev) => {
-      const copy = { ...prev };
-      delete copy[tempId];
-      return copy;
-    });
+    setUploadItem(null);
   }
 
   async function confirmDelete(item) {
     try {
-      if (item.isDirectory) {
-        await deleteDirectory(item.id);
-      } else {
-        await deleteFile(item.id);
-      }
+      if (item.isDirectory) await deleteDirectory(item.id);
+      else await deleteFile(item.id);
       setDeleteItem(null);
       loadDirectory();
     } catch (err) {
@@ -250,6 +230,12 @@ function DirectoryView() {
     ...filesList.map((f) => ({ ...f, isDirectory: false })),
   ];
 
+  // For compatibility with children expecting these values:
+  const isUploading = !!uploadItem?.isUploading;
+  const progressMap = uploadItem
+    ? { [uploadItem.id]: uploadItem.progress || 0 }
+    : {};
+
   return (
     <DirectoryContext.Provider
       value={{
@@ -273,7 +259,9 @@ function DirectoryView() {
         {errorMessage &&
           errorMessage !==
             "Directory not found or you do not have access to it!" && (
-            <div className="error-message">{errorMessage}</div>
+            <div className="error-message text-red-500 text-xs text-center mt-1">
+              {errorMessage}
+            </div>
           )}
 
         <DirectoryHeader
@@ -287,7 +275,7 @@ function DirectoryView() {
             "Directory not found or you do not have access to it!"
           }
         />
-        <Breadcrumb id ={activeDirId}/>
+        <Breadcrumb path={path} dirId={dirId}/>
 
         {showCreateDirModal && (
           <CreateDirectoryModal
@@ -320,8 +308,7 @@ function DirectoryView() {
             </p>
           ) : (
             <p className="text-center text-gray-600 mt-4 italic">
-              This folder is empty. Upload files or create a folder to see some
-              data.
+              This folder is empty. Upload a file or create a folder to see some data.
             </p>
           )
         ) : (
